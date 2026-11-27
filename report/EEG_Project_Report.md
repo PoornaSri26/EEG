@@ -988,3 +988,19 @@ Now the most important slide message. On the right is the channel-importance map
 13. Lachaux, J.-P., Rodriguez, E., Martinerie, J., and Varela, F. J. (1999). *Measuring phase synchrony in brain signals.* Human Brain Mapping, 8(4), 194–208.
 
 14. Lundberg, S. M. and Lee, S.-I. (2017). *A unified approach to interpreting model predictions.* Advances in Neural Information Processing Systems, 30.
+
+15. Alhothali, A. S. and Attar, E. T. (2026). *Validation of EEG mental workload markers using integrated statistical and machine learning analyses.* Applied Neuropsychology: Adult, 1–13. https://doi.org/10.1080/23279095.2026.2686957 — reanalysis of the same EEGMAT dataset; theta increase and alpha decrease replicate our band findings.
+
+16. Chikhi, S., Matton, N., and Blanchet, S. (2022). *EEG power spectral measures of cognitive workload: A meta-analysis.* Psychophysiology, 59(6), e14009. https://doi.org/10.1111/psyp.14009 — meta-analysis showing frontal theta is the best single index of cognitive workload.
+
+17. Katahira, K., Yamazaki, Y., Yamaoka, C., Ozaki, H., Nakagawa, S., and Nagata, N. (2018). *EEG Correlates of the Flow State: A Combination of Increased Frontal Theta and Moderate Frontocentral Alpha Rhythm in the Mental Arithmetic Task.* Frontiers in Psychology, 9, 300. https://doi.org/10.3389/fpsyg.2018.00300
+
+18. Ishii, R., Canuet, L., Ishihara, T., Aoki, Y., Ikeda, S., Hata, M., Katsimichas, T., Gunji, A., Takahashi, H., Nakahachi, T., Iwase, M., and Takeda, M. (2014). *Frontal midline theta rhythm and gamma power changes during focused attention on mental calculation: an MEG beamformer analysis.* Frontiers in Human Neuroscience, 8, 406. https://doi.org/10.3389/fnhum.2014.00406
+
+19. Dimitriadis, S. I., Sun, Y., Thakor, N. V., and Bezerianos, A. (2016). *Causal Interactions between Frontal θ – Parieto-Occipital α2 Predict Performance on a Mental Arithmetic Task.* Frontiers in Human Neuroscience, 10, 454. https://doi.org/10.3389/fnhum.2016.00454 — supports our theta–alpha connectivity features.
+
+20. Pušica, M., Mijović, B., Leva, M. C., and Gligorijević, I. (2025). *Machine learning performance in EEG-based mental workload classification across task types: a systematic review.* Frontiers in Neuroergonomics, 6, 1621309. https://doi.org/10.3389/fnrgo.2025.1621309
+
+21. Puce, A. and Hämäläinen, M. S. (2017). *A Review of Issues Related to Data Acquisition and Analysis in EEG/MEG Studies.* Brain Sciences, 7(6), 58. https://doi.org/10.3390/brainsci7060058
+
+22. Bigdely-Shamlo, N., Mullen, T., Kothe, C., Su, K.-M., and Robbins, K. A. (2015). *The PREP pipeline: standardized preprocessing for large-scale EEG analysis.* Frontiers in Neuroinformatics, 9, 116. https://doi.org/10.3389/fninf.2015.00116
