@@ -957,3 +957,34 @@ Let me answer the three questions every audience asks: why is this model the bes
 Now the most important slide message. On the right is the channel-importance map: SHAP importance summed per electrode and drawn on a head. It is spread across the whole scalp, with no single hot spot. That is good: the model is not relying on one electrode. But the warning below it matters. **We cannot call this proof of a pure brain signal.** First, Rest and Task are separate recordings, so fatigue, drowsiness or time-in-session are mixed up with the label. Second, 45% of the top features come from channels where eye and muscle artifacts are strongest. The notebook includes a robustness test, Section 16, that re-runs the model without those channels, without gamma and fast wavelets, and without the per-subject z-scoring. Its result was not saved in the version of the notebook I received, so I am not reporting it. Running that cell is the single most valuable next step.
 
 **To summarise:** with a careful, leak-free pipeline, a computer can tell Rest from mental arithmetic at about 74% accuracy on completely new people, 92% on three held-out people, with clear caveats about artifacts and confounds. Thank you. I'm happy to take questions.
+---
+
+## References
+
+1. Zyma, I., Tukaev, S., Seleznov, I., Kiyono, K., Popov, A., Chernykh, M., and Shpenkov, O. (2019). *Electroencephalograms during Mental Arithmetic Task Performance.* Data, 4(1), 14. https://doi.org/10.3390/data4010014 — dataset used in this project (PhysioNet EEGMAT).
+
+2. Sibisanu, R., Leba, M., and Ionica, A. C. (2026). *High Accuracy Is Not Generalization: Evaluation Design in EEG Mental Arithmetic Classification.* Entropy, 28(11), 1275. https://doi.org/10.3390/e28111275 — shows subject-dependent accuracies on EEGMAT collapse under LOSO; motivates our leak-free evaluation.
+
+3. Nath, D., Anubhav, Kalra, D., Singh, M., Sethia, D., and Indu, S. (2020). *EEG-based Mental Workload Detection in a Mental Arithmetic Task using Machine Learning.* International Journal of Advanced Science and Technology, 29(5), 13975–13984 — prior classification work on the same dataset.
+
+4. Sanjay, D. A. and Sheethal, P. P. (2025). *Detection of Mental Arithmetic Task Using EEG Signals.* International Journal of Sciences and Innovation Engineering, 2(12), 902–906. https://doi.org/10.70849/IJSCI — reports increased theta and frontal midline activity during mental arithmetic.
+
+5. Rambhia, J. and Sutar, R. (2023). *Classification of Mental Arithmetic States Using Single Electrode.* 2023 International Conference on Next Generation Electronics (NEleX), pp. 1–4. https://doi.org/10.1109/NELEX59773.2023.10421525 — EEGMAT-based single-channel classification.
+
+6. Berka, C., Levendowski, D. J., Lumicao, M. N., Yau, A., Davis, G., Zivkovic, V. T., Olmstead, R. E., Tremoulet, P. D., and Craven, P. L. (2007). *EEG correlates of task engagement and mental workload in vigilance, learning, and memory tasks.* Aviation, Space, and Environmental Medicine, 78(5 Suppl), B231–B244 — EEG workload markers including mental addition.
+
+7. Ajra, Z., Xu, B., Dray, G., Montmain, J., and Perrey, S. (2022). *Mental arithmetic task classification with convolutional neural network based on spectral-temporal features from EEG.* 44th Annual International Conference of the IEEE Engineering in Medicine & Biology Society (EMBC). https://doi.org/10.1109/EMBC48229.2022.9870887
+
+8. Aslam, M. (2025). *Electroencephalograph (EEG) based classification of mental arithmetic using explainable machine learning.* Biocybernetics and Biomedical Engineering, 45(2), 154–169. https://doi.org/10.1016/j.bbe.2025.02.002
+
+9. Gramfort, A., Luessi, M., Larson, E., Engemann, D. A., Strohmeier, D., Brodbeck, C., Goj, R., Jas, M., Brooks, T., Parkkonen, L., and Hämäläinen, M. (2013). *MEG and EEG data analysis with MNE-Python.* Frontiers in Neuroscience, 7, 267.
+
+10. Jas, M., Engemann, D. A., Bekhti, Y., Raimondo, F., and Gramfort, A. (2017). *Autoreject: Automated artifact rejection for MEG and EEG data.* NeuroImage, 159, 361–368.
+
+11. Makeig, S., Bell, A. J., Jung, T.-P., and Sejnowski, T. J. (1997). *Independent component analysis of electroencephalographic data.* Advances in Neural Information Processing Systems, 8.
+
+12. Hjorth, B. (1970). *EEG analysis based on time domain properties.* Electroencephalography and Clinical Neurophysiology, 28(3), 306–310.
+
+13. Lachaux, J.-P., Rodriguez, E., Martinerie, J., and Varela, F. J. (1999). *Measuring phase synchrony in brain signals.* Human Brain Mapping, 8(4), 194–208.
+
+14. Lundberg, S. M. and Lee, S.-I. (2017). *A unified approach to interpreting model predictions.* Advances in Neural Information Processing Systems, 30.
