@@ -957,6 +957,29 @@ Let me answer the three questions every audience asks: why is this model the bes
 Now the most important slide message. On the right is the channel-importance map: SHAP importance summed per electrode and drawn on a head. It is spread across the whole scalp, with no single hot spot. That is good: the model is not relying on one electrode. But the warning below it matters. **We cannot call this proof of a pure brain signal.** First, Rest and Task are separate recordings, so fatigue, drowsiness or time-in-session are mixed up with the label. Second, 45% of the top features come from channels where eye and muscle artifacts are strongest. The notebook includes a robustness test, Section 16, that re-runs the model without those channels, without gamma and fast wavelets, and without the per-subject z-scoring. Its result was not saved in the version of the notebook I received, so I am not reporting it. Running that cell is the single most valuable next step.
 
 **To summarise:** with a careful, leak-free pipeline, a computer can tell Rest from mental arithmetic at about 74% accuracy on completely new people, 92% on three held-out people, with clear caveats about artifacts and confounds. Thank you. I'm happy to take questions.
+
+---
+
+## Limitations and how we addressed them
+
+### Limitations reported in prior work — and our response
+
+| Limitation in the literature | How this project addresses it |
+|---|---|
+| **Inflated accuracy from subject-dependent evaluation.** Sibisanu et al. (2026) showed 88–99% EEGMAT accuracies collapse under LOSO; Nath et al. (2020, ~97.5%) and Aslam (2025, ~99%) used random/within-subject splits that leak subject identity. | Every modelling number comes from leave-one-subject-out evaluation. Imputation, scaling and ANOVA feature selection are fitted **inside each training fold only** — no test-subject information touches the pipeline. Subjects 01/22/35 are additionally held out completely for a clean test. We report the honest ~74% LOSO figure rather than a inflated split-based one. |
+| **Artifact contamination.** Puce & Hämäläinen (2017) and the dataset paper itself note ocular/muscular contamination is the main threat to EEG workload claims; 45% of our top SHAP features sit on artifact-prone channels. | Dedicated ICA pass fitted jointly on Rest+Task (removes blink-like and muscle-like components, Fp1/Fp2 as EOG proxies since no EOG channel exists), plus AutoReject epoch rejection. Section 16 re-runs the headline model **without** artifact-prone channels, gamma/fast wavelets and per-subject z-scoring, to quantify how much of the accuracy survives. |
+| **Task-dependent ML performance.** Pušica et al. (2025) show workload-classification accuracy varies sharply with task type and labelling scheme, so cross-study numbers are not comparable. | We do not compare our number to other datasets' accuracies; all claims are internal to EEGMAT and framed as "Rest vs serial subtraction", not generic "mental effort". |
+| **Band-effect inconsistency.** Chikhi et al. (2022) caution that spectral workload effects vary with emotional load and task context. | We do not claim a universal band signature: findings are reported per-channel, per-subject, and the group-level topomap analysis explicitly shows effects are **not** spatially consistent across individuals. |
+
+### Remaining limitations of this project (stated honestly)
+
+1. **Rest and Task are separate recordings.** Rest epochs are truncated to match Task length, but time-in-session, fatigue and drowsiness remain confounded with the label. No analysis here can fully separate neural workload from these factors — a within-recording task-switch design would be needed.
+2. **Residual artifacts.** ICA with only 19 electrodes and no dedicated EOG/EMG channels is an imperfect cleaner; blink/muscle residuals may remain, which is why Section 16 exists.
+3. **Per-subject z-scoring assumption.** Features are z-scored within each subject across *both* recordings, which requires the recording to mix conditions. This uses no labels, but a purely-rest or purely-task recording could not be scored this way; Section 16 reports the model without this step.
+4. **Small sample.** 36 subjects with ~60 s per condition. Subject-to-subject variability is large (visible in the LOSO standard deviation), and the 3-subject hold-out is a sanity check, not a precise estimate.
+5. **Mild optimism in LOSO.** Hyperparameters were tuned on the same subject pool, and the top-3 ensemble was selected by LOSO AUC — so even the headline number carries a small selection bias. The hold-out sections avoid both issues.
+6. **No causal or clinical claim.** The model detects a statistical pattern associated with the task state; it is not a diagnostic or neurofeedback device, and accuracy on new populations is unproven.
+
 ---
 
 ## References
