@@ -20,7 +20,8 @@ EEG epochs using subject-independent (leave-one-subject-out) evaluation.
 | Path | Contents |
 |---|---|
 | `slides/` | Presentation slides (`EEG_Mental_Arithmetic_Presentation.pptx`) |
-| `report/` | Project report — slide-by-slide script and deep analysis (`EEG_Project_Report.md`) |
+| `report/` | Project report — slide-by-slide script and deep analysis (`EEG_Project_Report.md`), plus a 10-page summary PDF (`EEG_Summary_Report.pdf`) |
+| `references/` | Related work and citations (`RELATED_WORKS.md`, `references.bib`) — dataset paper, prior EEGMAT studies, workload literature, and methods references |
 | `code/` | Analysis notebook (`eeg_analysis.ipynb`) |
 | `dataset/` | Raw EDF recordings — 36 subjects × 2 recordings (Rest `_1`, Task `_2`) + metadata |
 | `results/` | Key output figures: topomaps, SHAP importance, ROC/confusion matrices |
