@@ -33,6 +33,21 @@ Technology, 29(5), 13975–13984.
 - Our work differs: LOSO evaluation, richer feature set (wavelet,
   non-linear, connectivity), and explicit artifact/leakage analysis.
 
+**Sibisanu, R., Leba, M., and Ionica, A. C. (2026).**
+*High Accuracy Is Not Generalization: Evaluation Design in EEG Mental
+Arithmetic Classification.* Entropy, 28(11), 1275.
+https://doi.org/10.3390/e28111275
+
+- The most directly relevant prior study: systematically re-evaluates
+  rest-vs-arithmetic classification on **this same EEGMAT dataset**
+  under subject-dependent vs. subject-independent (LOSO) protocols.
+- Shows reported 88–99% accuracies collapse under LOSO (kappa 0.19–0.26,
+  ROC-AUC 0.66–0.71) — directly motivating our leak-free pipeline:
+  in-fold feature selection, per-subject normalization without labels,
+  and hold-out subjects. Our honest LOSO result (~74% balanced
+  accuracy) is consistent with this picture of modest but real
+  subject-independent signal.
+
 **Sanjay, D. A. and Sheethal, P. P. (2025).**
 *Detection of Mental Arithmetic Task Using EEG Signals.*
 International Journal of Sciences and Innovation Engineering, 2(12),
@@ -41,6 +56,16 @@ International Journal of Sciences and Innovation Engineering, 2(12),
 - Mental arithmetic vs rest; time/frequency/time–frequency features;
   reports increased theta and frontal midline activity — consistent with
   our top SHAP feature (frontal theta).
+
+**Rambhia, J. and Sutar, R. (2023).** *Classification of Mental
+Arithmetic States Using Single Electrode.* 2023 International Conference
+on Next Generation Electronics (NEleX), pp. 1–4.
+https://doi.org/10.1109/NELEX59773.2023.10421525
+
+- EEGMAT dataset; wavelet alpha-band features from a single occipital
+  electrode (O1); reports very high accuracy — included for completeness;
+  single-channel results are not comparable to our 19-channel,
+  subject-independent evaluation.
 
 ## 3. EEG mental workload / cognitive-state literature
 
