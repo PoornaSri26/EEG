@@ -20,8 +20,10 @@ B28SSR04/
 ├── slides/
 │   └── EEG_Mental_Arithmetic_Presentation.pptx     (15-20 slides, 20 min talk)
 ├── report/
-│   ├── EEG_IEEE_Report.pdf                         (Main IEEE-style report)
-│   ├── EEG_IEEE_Report.md                          (Source markdown)
+│   ├── EEG_IEEE_Report_DETAILED.pdf                (MAIN: Detailed IEEE report with figures, why/why-not, comparisons)
+│   ├── EEG_IEEE_Report_DETAILED.md                 (Source markdown for detailed report)
+│   ├── EEG_IEEE_Report.md                          (Standard IEEE report)
+│   ├── EEG_IEEE_Report.tex                         (LaTeX source for detailed report)
 │   ├── EEG_Project_Report.md                       (Slide-by-slide deep script)
 │   └── EEG_Summary_Report.pdf                      (10-page summary, already in repo)
 ├── code/
@@ -30,12 +32,13 @@ B28SSR04/
 │   ├── Subject00_1.edf ... Subject35_2.edf         (All 72 EDF files)
 │   └── subject-info.csv                            (Metadata: group, counter quality)
 ├── results/
-│   ├── topomap_theta_task_minus_rest.png
-│   ├── shap_summary_holdout.png
-│   ├── roc_loso_svm_rbf.png
-│   ├── confusion_loso_svm_rbf.png
-│   ├── robustness_checks.png
-│   └── feature_correlation_heatmap_fz.png
+│   ├── 01_subject00_theta_topomap_rest_task_diff.png
+│   ├── 02_all_36_subjects_theta_topomap_grid.png
+│   ├── 03_shap_top20_features.png
+│   ├── 04_ROC_RF_XGB_and_XGB_confusion_matrix.png
+│   ├── 05_shap_summary_xgboost_top10.png
+│   ├── 06_frontal_theta_violin_good_vs_bad_counters.png
+│   └── 07_shap_top20_train33_subjects_only.png
 ├── references/
 │   ├── RELATED_WORKS.md                            (Literature review with mappings)
 │   └── references.bib                              (BibTeX for IEEE report)
@@ -46,18 +49,22 @@ B28SSR04/
 
 ## 📄 Report: What to Submit (Best IEEE Style)
 
-### Primary Report: `EEG_IEEE_Report.pdf`
-**Generated from:** `EEG_IEEE_Report.md` (this repo: `report/EEG_IEEE_Report.md`)  
-**Format:** IEEE Conference two-column, 10pt, ~6-8 pages  
-**Contents:**
+### Primary Report: `EEG_IEEE_Report_DETAILED.pdf` ⭐ **SUBMIT THIS**
+**Generated from:** `EEG_IEEE_Report_DETAILED.md` / `EEG_IEEE_Report_DETAILED.tex`  
+**Format:** IEEE Conference two-column, 10pt, ~8-10 pages  
+**Contents (with figures, why/why-not, comparisons):**
 - Abstract (150 words)
 - 1. Introduction (motivation, leakage problem, contributions)
-- 2. Related Work (Table 1: prior EEGMAT studies vs. evaluation design)
-- 3. Materials & Methods (Dataset, Preprocessing, Features, Normalization, Pipeline, Models, Evaluation)
-- 4. Results (EDA, LOSO model comparison Table 2, Hold-out Table 3, SHAP, Robustness Table 4)
-- 5. Discussion (Why 74%, why 92%, literature alignment, limitations)
+- 2. Related Work (Table 1: prior EEGMAT studies vs. evaluation design — **why LOSO matters**)
+- 3. Materials & Methods (Dataset, **Preprocessing: 6 steps with why/why-not tables**, Features: 5 families with justification, Normalization, Pipeline, Models, Evaluation)
+- 4. Results (EDA with **actual figures**: theta topomaps Fig 1-2, frontal theta Fig 3, LOSO model comparison Table 2, ROC/Confusion Fig 4, Hold-out Table 3, SHAP Fig 5 + Table 4, **Robustness Table 5**, Per-subject variability)
+- 5. Discussion (**Why 74% not higher? Why hold-out 92% ≠ true? Literature alignment Table 6, 8 Limitations**)
 - 6. Conclusion
 - References (27 entries, IEEE style)
+
+### Standard Report: `EEG_IEEE_Report.pdf`
+**Generated from:** `EEG_IEEE_Report.md` / `EEG_IEEE_Report.tex`  
+**Format:** IEEE two-column, ~6-8 pages (condensed version)
 
 ### Supplementary Report: `EEG_Project_Report.md`
 **Already in repo:** `report/EEG_Project_Report.md` (118 KB)  
@@ -203,21 +210,41 @@ C:\Users\npoor\EEG\                    ← Git repo root (push this)
 
 ---
 
+## 📁 File Locations (Your Local Machine)
+
+```
+C:\Users\npoor\EEG\                    ← Git repo root (push this)
+├── slides\EEG_Mental_Arithmetic_Presentation.pptx
+├── report\
+│   ├── EEG_IEEE_Report_DETAILED.md   ← MAIN: Detailed IEEE markdown with figures, why/why-not, comparisons
+│   ├── EEG_IEEE_Report_DETAILED.tex  ← MAIN: Detailed IEEE LaTeX (compile for best PDF)
+│   ├── EEG_IEEE_Report.md            ← Standard IEEE markdown
+│   ├── EEG_IEEE_Report.tex           ← Standard IEEE LaTeX
+│   ├── EEG_Project_Report.md         ← Existing deep script
+│   └── EEG_Summary_Report.pdf        ← Existing 10-page summary
+├── code\eeg_analysis.ipynb
+├── dataset\ (72 EDF + subject-info.csv)
+├── results\ (7 PNG figures with actual filenames)
+└── references\
+    ├── RELATED_WORKS.md
+    └── references.bib
+```
+
+---
+
 ## 🚀 Quick PDF Generation (if Pandoc + LaTeX installed)
 
 ```bash
 cd C:\Users\npoor\EEG\report
 # Option 1: Pandoc (needs LaTeX: MiKTeX/TeX Live)
-pandoc EEG_IEEE_Report.md -o EEG_IEEE_Report.pdf --pdf-engine=xelatex -V geometry:margin=1in -V fontsize:10pt --citeproc --bibliography=references.bib --csl=https://raw.githubusercontent.com/citation-style-language/styles/master/ieee.csl
+pandoc EEG_IEEE_Report_DETAILED.md -o EEG_IEEE_Report_DETAILED.pdf --pdf-engine=xelatex -V geometry:margin=1in -V fontsize:10pt --citeproc --bibliography=references.bib --csl=https://raw.githubusercontent.com/citation-style-language/styles/master/ieee.csl
 
-# Option 2: VS Code (Markdown PDF extension)
-# Open EEG_IEEE_Report.md → Ctrl+Shift+P → "Markdown PDF: Export (pdf)"
-
-# Option 3: Online (HackMD, Overleaf) — paste markdown, export PDF
+# Option 2: Overleaf (best for LaTeX) — upload EEG_IEEE_Report_DETAILED.tex + references.bib, compile
+# Option 3: VS Code (Markdown PDF extension) — open EEG_IEEE_Report_DETAILED.md → Ctrl+Shift+P → "Markdown PDF: Export (pdf)"
 ```
 
 ---
 
-**Final Note:** The IEEE report (`EEG_IEEE_Report.md/.pdf`) is your *primary submission artifact*. The deep script (`EEG_Project_Report.md`) is your *presentation backup*. The summary (`EEG_Summary_Report.pdf`) is the *evaluator quick-read*. All three should be in `report/`.
+**Final Note:** The **detailed IEEE report** (`EEG_IEEE_Report_DETAILED.md/.pdf`) is your *primary submission artifact* — it contains all figures, why/why-not tables, comparisons, and robustness checks. The standard IEEE report (`EEG_IEEE_Report.md/.pdf`) is a condensed version. The deep script (`EEG_Project_Report.md`) is your *presentation backup*. The summary (`EEG_Summary_Report.pdf`) is the *evaluator quick-read*. All four should be in `report/`.
 
 **Good luck!** 🎓
