@@ -1,0 +1,389 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{float}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Subject-Independent EEG Classification of Mental Arithmetic vs. Rest:
+A Leak-Free Pipeline with Robustness Validation}
+
+\author{
+\IEEEauthorblockN{Poorna Sri Nandyala}
+\IEEEauthorblockA{
+\textit{Department of Computer Science and Engineering}\\
+\textit{IIIT Sri City}\\
+Chittoor, Andhra Pradesh, India \\
+poornasri.n24@iiits.in}
+}
+
+\maketitle
+
+\begin{abstract}
+Electroencephalography (EEG)-based mental workload classification holds promise for brain-computer interfaces and cognitive monitoring, yet reported accuracies often collapse under subject-independent evaluation due to data leakage and artifact confounds. This work presents a complete, leak-free pipeline for classifying Rest versus Mental Arithmetic Task epochs using the public EEGMAT dataset (36 subjects, 19-channel EEG). We employ rigorous preprocessing (band-pass filtering, ICA-based artifact removal with Fp1/Fp2 as EOG proxies, AutoReject), extract 1,076 features per 4-second epoch spanning time-domain, spectral, wavelet, non-linear complexity, and connectivity domains, and evaluate 17 models under leave-one-subject-out (LOSO) cross-validation with in-fold feature selection and per-subject z-normalization without label access. The best single model (SVM-RBF) achieves \SI{73.7}{\%} balanced accuracy (AUC \SI{0.820}), consistent with the only prior LOSO study on this dataset. A fixed hold-out test on three unseen subjects yields \SI{92.0}{\%} raw accuracy (AUC \SI{0.974}), though this estimate is noisy due to small sample size. SHAP analysis identifies frontal/temporal complexity and gamma features as top discriminators, but robustness checks excluding artifact-prone channels and frequency bands show performance degradation, indicating non-neural contributions. We conclude that subject-independent classification of this task is feasible but modest (\texttildelow\SI{74}{\%}), and that prior claims of \SI{90--99}{\%} accuracy stem from subject-dependent evaluation designs. Code and data: \url{https://github.com/PoornaSri26/EEG}.
+\end{abstract}
+
+\begin{IEEEkeywords}
+EEG, mental arithmetic, mental workload, leave-one-subject-out, cross-subject generalization, artifact robustness, SHAP interpretability, data leakage
+\end{IEEEkeywords}
+
+\section{Introduction}
+Electroencephalography (EEG) provides a non-invasive window into brain dynamics with millisecond temporal resolution, making it a candidate for real-time mental workload monitoring and brain-computer interfaces (BCIs). Mental arithmetic—serial subtraction of a multi-digit minuend and subtrahend—is a well-studied cognitive load paradigm that reliably elicits frontal midline theta (Fm$\theta$) synchronization and alpha/beta desynchronization \cite{berka2007eeg, chikhi2022eeg, katahira2018eeg}. However, translating this neuroscience finding into a reliable single-trial classifier for new, unseen individuals remains challenging.
+
+The public EEGMAT dataset \cite{zyma2019electroencephalograms} (PhysioNet: \texttt{eegmat/1.0.0}) comprises 36 healthy subjects, each recorded during Rest (eyes-open baseline) and Task (mental arithmetic) conditions using a 23-channel montage (19 scalp EEG + 2 ear references + ECG). Prior work on this dataset reports accuracies of \SI{88}{\%}--\SI{99}{\%} using random trial splits or subject-dependent cross-validation \cite{nath2020eeg, rambhia2023classification, aslam2025electroencephalograph}. However, Sibisanu \textit{et al.} \cite{sibisanu2026high} recently demonstrated that these results collapse under subject-independent evaluation (leave-one-subject-out, LOSO), with Cohen's $\kappa$ falling to \SIrange{0.19}{0.26} and ROC-AUC to \SIrange{0.66}{0.71}. This discrepancy arises because random splits allow the model to learn subject-specific idiosyncrasies (skull thickness, electrode impedance, baseline spectral profile) rather than task-relevant neural patterns—a form of data leakage \cite{pusica2025machine}.
+
+This paper presents a rigorously leak-free pipeline for Rest vs. Task classification on EEGMAT with the following contributions:
+\begin{enumerate}
+    \item A complete preprocessing-to-classification pipeline with \textbf{zero data leakage}: in-fold imputation, variance filtering, standardization, and ANOVA feature selection; per-subject z-normalization computed without label access; fixed hold-out subjects never used in any training or hyperparameter choice.
+    \item A rich feature set (\num{1076} features/epoch) combining time-domain, spectral (Welch PSD), wavelet (db4), non-linear complexity (entropy, fractal dimension, DFA, LZ), and connectivity (theta-alpha PLV/coherence) descriptors.
+    \item Comprehensive model comparison (\num{17} models/ensembles) under LOSO, with hyperparameter tuning via grouped 5-fold CV on training subjects only.
+    \item Interpretability via SHAP on unseen subjects, plus robustness checks excluding artifact-prone channels (Fp1/Fp2) and frequency bands (gamma) to assess neural vs. non-neural contributions.
+    \item Honest reporting: LOSO balanced accuracy \SI{73.7}{\%} (AUC \SI{0.820}); hold-out \SI{92.0}{\%} (AUC \SI{0.974}) with explicit caveats on small-sample optimism.
+\end{enumerate}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{EEGMAT Dataset Studies}
+Table~\ref{tab:prior} summarizes prior work on this dataset. The critical divide is evaluation design: subject-dependent (random splits, within-subject CV) versus subject-independent (LOSO).
+
+\begin{table}[htbp]
+\caption{Prior Work on EEGMAT Dataset: Evaluation Design Determines Reported Performance}
+\label{tab:prior}
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Study & Subjects & Features & Evaluation & Reported Acc. \\
+\midrule
+Nath \textit{et al.} \cite{nath2020eeg} (2020) & 36 & Spectral, ratios & Random split (80/20) & \SI{97.5}{\%} (SVM) \\
+Rambhia \& Sutar \cite{rambhia2023classification} (2023) & 36 & Wavelet (O1 only) & Within-subject & \SI{>95}{\%} \\
+Aslam \cite{aslam2025electroencephalograph} (2025) & 36 & EMD + RF-RFE & Within-subject & \SI{98--99}{\%} \\
+Alhothali \& Attar \cite{alhothali2026validation} (2026) & 36 & Welch PSD + ERP & Subject-level CV & \SI{92}{\%} (RF) \\
+\textbf{Sibisanu \textit{et al.} \cite{sibisanu2026high} (2026)} & \textbf{36} & \textbf{Multiple} & \textbf{LOSO} & \textbf{\SI{66--71}{\%} AUC} \\
+\textbf{This work} & \textbf{36} & \textbf{\num{1076}} & \textbf{LOSO + hold-out} & \textbf{\SI{73.7}{\%} bal. acc.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Mental Workload Neurophysiology}
+Meta-analysis of \num{24} studies (\num{723} participants) confirms cognitive workload robustly increases theta (Hedges' $g = 0.68$) and beta ($g = 0.50$), with \textbf{frontal theta the best single index} \cite{chikhi2022eeg}. Frontal-midline theta generators localize to dorsal anterior cingulate / medial prefrontal cortex during mental subtraction \cite{ishii2014frontal}. Theta-alpha coupling between frontal and parieto-occipital regions predicts arithmetic performance \cite{dimitriadis2016causal}, motivating our connectivity features.
+
+\subsection{Methodological Foundations}
+Preprocessing follows MNE-Python \cite{gramfort2013meg} and PREP pipeline \cite{bigdely2015prep} principles: average referencing, band-pass \SIrange{1}{45}{\hertz} + \SI{50}{\hertz} notch, resampling to \SI{128}{\hertz}, ICA artifact removal \cite{makeig1997independent} with AutoReject \cite{jas2017autoreject}. Non-linear features draw from Hjorth \cite{hjorth1970eeg} and antropy \cite{antropy}. SHAP interpretability uses Shapley additive explanations \cite{lundberg2017unified}.
+
+\section{Materials and Methods}
+
+\subsection{Dataset}
+\label{sec:dataset}
+EEGMAT \cite{zyma2019electroencephalograms}: 36 subjects (24 ``good counters'', 12 ``bad counters''), ages \SIrange{18}{35}{\year}. Two recordings per subject: \texttt{SubjectXX\_1.edf} (Rest, \texttildelow\SI{3}{\minute}) and \texttt{SubjectXX\_2.edf} (Task, serial subtraction, \texttildelow\SI{3}{\minute}). \num{23} channels in EDF format: \num{19} scalp (10-20 system: Fp1, Fp2, F3, F4, Fz, F7, F8, C3, C4, Cz, T3, T4, T5, T6, P3, P4, Pz, O1, O2), A1, A2 (ear references), A2-A1 (reference difference), ECG. Sampling rate \SI{256}{\hertz} (original).
+
+\subsection{Preprocessing Pipeline}
+\label{sec:preprocess}
+All steps applied identically to Rest and Task recordings per subject to avoid introducing condition-specific bias.
+
+\begin{enumerate}
+    \item \textbf{Channel selection:} Match channel names to standard 10-20 montage; retain \num{19} scalp electrodes; drop A2-A1 and ECG.
+    \item \textbf{Average reference:} Subtract channel mean from each channel ($V_i \leftarrow V_i - \frac{1}{19}\sum_j V_j$), removing common-mode noise.
+    \item \textbf{Filtering:} Zero-phase FIR band-pass \SIrange{1}{45}{\hertz} (transition width \SI{1}{\hertz}, \SI{60}{\decibel} stopband) + \SI{50}{\hertz} notch (mains hum). Order \num{844} (1 Hz) and \num{36} (45 Hz).
+    \item \textbf{Resampling:} \SI{128}{\hertz} (Nyquist \SI{64}{\hertz} $>$ \SI{45}{\hertz}); reduces compute while preserving all bands of interest.
+    \item \textbf{ICA artifact removal:} FastICA (\num{15} components; rank after average reference = \num{18}). Components correlated with Fp1/Fp2 (EOG proxies) $|r| > 0.7$ flagged as blink; top kurtosis components flagged as muscle. Maximum \num{4} components removed. One ICA fit per subject on concatenated Rest+Task ensures identical unmixing.
+    \item \textbf{Epoching \& AutoReject:} \SI{4}{\second} non-overlapping epochs (\num{512} samples). AutoReject \cite{jas2017autoreject} learns per-channel amplitude thresholds via cross-validation; repairs or drops bad epochs. Rest epochs truncated to match Task count per subject (balanced classes, chance = \SI{50}{\%}).
+\end{enumerate}
+
+Result: \num{1076} clean epochs total (\num{538} Rest, \num{538} Task), \texttildelow\num{30} epochs/subject (\texttildelow\num{15} per condition).
+
+\subsection{Feature Extraction}
+\label{sec:features}
+Per epoch, per channel (\num{19}), \num{56} features across four families (\num{1064} total), plus \num{12} connectivity features (\num{4} electrode pairs $\times$ \num{3} measures).
+
+\subsubsection{Time-Domain (\num{11} per channel)}
+Mean, std, variance, skewness, kurtosis, RMS, peak-to-peak, zero-crossing rate, line length, Hjorth mobility, Hjorth complexity \cite{hjorth1970eeg}.
+
+\subsubsection{Spectral (\num{22} per channel)}
+Welch PSD (\num{256}-sample Hamming windows, \SI{50}{\%} overlap $\rightarrow$ \SI{0.5}{\hertz} resolution). Absolute power (5 bands: $\delta$ \SIrange{0.5}{4}{\hertz}, $\theta$ \SIrange{4}{8}{\hertz}, $\alpha$ \SIrange{8}{13}{\hertz}, $\beta$ \SIrange{13}{30}{\hertz}, $\gamma$ \SIrange{30}{45}{\hertz}), log power, relative power, spectral edge \SI{95}{\%}, peak frequency, spectral entropy, engagement index ($\beta/(\alpha+\theta)$), $\theta/\alpha$, $\theta/\beta$, $\alpha/\theta$ ratios.
+
+\subsubsection{Wavelet (\num{13} per channel)}
+Discrete wavelet transform (Daubechies-4, level \num{5}). Energy and relative energy for 6 levels (L0: \SIrange{0}{2}{\hertz}, L1: \SIrange{2}{4}{\hertz}, L2: \SIrange{4}{8}{\hertz}, L3: \SIrange{8}{16}{\hertz}, L4: \SIrange{16}{32}{\hertz}, L5: \SIrange{32}{64}{\hertz} $\rightarrow$ effectively \SIrange{32}{45}{\hertz} post-filtering) + wavelet entropy.
+
+\subsubsection{Non-Linear Complexity (\num{10} per channel)}
+Permutation entropy, SVD entropy, approximate entropy (ApEn), sample entropy (SampEn), Petrosian fractal dimension, Katz fractal dimension, Higuchi fractal dimension (HFD), detrended fluctuation analysis (DFA), zero-crossing count, Lempel-Ziv complexity.
+
+\subsubsection{Connectivity (\num{12} total)}
+Pairs: Fp1-Fp2 (inter-hemispheric frontal), F3-F4 (frontal), Fz-Pz (fronto-parietal), F7-F8 (lateral frontal). Measures: Pearson correlation (broadband), Phase-Locking Value (PLV) \cite{lachaux1999measuring} in \SIrange{4}{13}{\hertz} ($\theta$-$\alpha$), Magnitude-squared coherence in \SIrange{4}{13}{\hertz}.
+
+\subsection{Normalization}
+\label{sec:normalize}
+Per-subject z-scoring: for each feature, subtract subject's mean (across all epochs, both conditions) and divide by subject's standard deviation. \textbf{No labels used.} This removes between-subject baseline differences (skull thickness, electrode contact, arousal) while preserving within-subject Rest/Task contrast. Caveat: a deployed system would need both conditions from a new user to compute this normalization.
+
+\subsection{Classification Pipeline}
+\label{sec:pipeline}
+Scikit-learn \texttt{Pipeline} ensuring zero leakage:
+\begin{enumerate}
+    \item Median imputation (training-fold median)
+    \item VarianceThreshold (\num{1e-8})
+    \item StandardScaler (training-fold fit)
+    \item SelectKBest (ANOVA F-test, $k=150$, training-fold fit)
+    \item Classifier
+\end{enumerate}
+
+\subsection{Models Evaluated}
+\label{sec:models}
+\begin{itemize}
+    \item Linear: Logistic Regression (L2, $C=0.05$), SVM-Linear ($C=0.03$)
+    \item Kernel: SVM-RBF ($C=30$, $\gamma=0.0003$)
+    \item Single Trees: DecisionTree (max\_depth=5, min\_samples\_leaf=10), ExtraTree (max\_depth=6)
+    \item Bagging: Bagging (300 trees, depth 6, 80\% samples, 50\% features), RandomForest (tuned: 300 trees, leaf 2, $\sqrt{p}$ features), ExtraTrees (tuned: 600 trees, leaf 2, max\_features=0.3)
+    \item Boosting: AdaBoost (300 estimators, lr=0.5), GradientBoosting (tuned: 400 trees, depth 4, lr=0.1, subsample=0.6), HistGradBoost (tuned: depth 4, lr=0.05, L2=0.1), XGBoost (tuned: 200 trees, depth 3, lr=0.1, colsample=0.5, reg\_lambda=3)
+    \item Ensembles (soft voting): Top-3 by LOSO AUC, SVM+Boosting, All SVMs, All Trees, All Models
+\end{itemize}
+
+\subsection{Evaluation Protocol}
+\label{sec:eval}
+\begin{itemize}
+    \item \textbf{LOSO (primary):} Train on 35 subjects, test on 1; repeat 36 times. Per-subject balanced accuracy and pooled metrics reported. Hyperparameter tuning via \textbf{grouped 5-fold CV} (GroupKFold, groups = subjects) on training subjects only, \num{12} random draws (RandomizedSearchCV).
+    \item \textbf{Hold-out (secondary):} Subjects 01, 22, 35 fixed \textit{a priori}, never used in training, tuning, or model selection. Final model (SVM-RBF, all features, chosen by grouped CV on training 33 subjects) evaluated on these 3 subjects' \num{88} epochs.
+    \item \textbf{Metrics:} Balanced accuracy (primary), ROC-AUC, precision, recall, F1, Matthews Correlation Coefficient (MCC), confusion matrix. Per-subject mean $\pm$ SD reported.
+    \item \textbf{SHAP:} TreeSHAP for tree models; KernelSHAP for SVM. Computed on hold-out subjects using model trained on all 33 training subjects.
+    \item \textbf{Robustness checks:} Re-run LOSO excluding (a) Fp1/Fp2 channels, (b) gamma-band features, (c) both.
+\end{itemize}
+
+\section{Results}
+
+\subsection{Exploratory Data Analysis}
+\textbf{Topography:} Task-minus-Rest theta power topomaps show high inter-subject variability; no universal spatial pattern (Fig.~\ref{fig:topomap}). Subject 0: no region significant after Bonferroni correction ($p \ge 0.78$).
+
+\textbf{Group-level frontal theta:} Relative power increases slightly in Task (median $+0.0102$, paired Wilcoxon $p=0.0105$, $n=36$). Effect size small vs. between-subject spread. Good vs. bad counters: no difference (Mann-Whitney $p=0.54$).
+
+\textbf{Feature redundancy:} High correlation among band powers, log-powers, and ratios at same channel (e.g., Fz $\theta$ power vs. log $\theta$ power $r \approx 0.98$; $\theta/\alpha$ vs. $\alpha/\theta$ $r \approx -1$). Justifies regularisation and feature selection.
+
+\subsection{LOSO Model Comparison}
+\label{sec:loso_results}
+Table~\ref{tab:loso} summarizes per-subject mean balanced accuracy and AUC for all \num{17} models.
+
+\begin{table}[htbp]
+\caption{LOSO Results: Per-Subject Mean Balanced Accuracy and AUC (SD across 36 subjects)}
+\label{tab:loso}
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model & Family & Bal. Acc. & AUC & SD (Acc.) \\
+\midrule
+SVM-RBF & Kernel & \textbf{0.737} & \textbf{0.820} & 0.166 \\
+AdaBoost & Boosting & 0.736 & 0.812 & 0.192 \\
+XGBoost & Boosting & 0.735 & 0.816 & 0.198 \\
+LogReg-L2 & Linear & 0.733 & 0.817 & 0.168 \\
+SVM-Linear & Linear & 0.732 & 0.812 & 0.161 \\
+Ensemble: SVM+Boosting & Ensemble & 0.738 & 0.822 & 0.194 \\
+Ensemble: Top-3 (post-hoc) & Ensemble & 0.743 & 0.826 & 0.177 \\
+ExtraTrees & Tree Ensemble & 0.724 & 0.788 & 0.206 \\
+GradBoost & Boosting & 0.728 & 0.809 & 0.193 \\
+HistGradBoost & Boosting & 0.727 & 0.807 & 0.194 \\
+Bagging & Tree Ensemble & 0.708 & 0.782 & 0.206 \\
+RandomForest & Tree Ensemble & 0.702 & 0.784 & 0.215 \\
+ExtraTree (single) & Tree & 0.654 & 0.715 & 0.165 \\
+DecisionTree (single) & Tree & 0.641 & 0.703 & 0.174 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key observations:}
+\begin{itemize}
+    \item Single trees severely overfit (\SI{64--65}{\%}). Ensembling adds \SI{7--9} points.
+    \item Best non-tree (SVM-RBF, \SI{73.7}{\%}) matches best boosting (XGBoost \SI{73.5}{\%}, AdaBoost \SI{73.6}{\%}).
+    \item Top models within \texttildelow\SI{1}{\%} of each other; differences not significant given per-subject SD \texttildelow\SI{0.17}.
+    \item Post-hoc ``Top-3'' ensemble (\SI{74.3}{\%}) chosen after seeing LOSO $\rightarrow$ optimistic.
+\end{itemize}
+
+Grouped CV tuning accuracies (training 33 subjects) were higher (SVM-RBF \SI{74.5}{\%}, XGBoost \SI{74.2}{\%}, GradBoost \SI{74.7}{\%}), confirming modest optimism from tuning on same subject pool.
+
+\subsection{Hold-Out Test (Subjects 01, 22, 35)}
+\label{sec:holdout}
+SVM-RBF (all features, chosen by grouped CV on 33 training subjects) on fixed hold-out:
+
+\begin{table}[htbp]
+\caption{Hold-Out Results (3 Unseen Subjects, 88 Epochs Total)}
+\label{tab:holdout}
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Subject & Rest Epochs & Task Epochs & Bal. Acc. & AUC \\
+\midrule
+01 & 22 & 22 & 82.1\% & 0.92 \\
+22 & 22 & 22 & 96.7\% & 0.99 \\
+35 & 22 & 22 & 96.7\% & 0.99 \\
+\midrule
+\textbf{Pooled} & \textbf{66} & \textbf{66} & \textbf{92.0\%} & \textbf{0.974} \\
+\textbf{Smoothed (w=3)} & - & - & \textbf{97.7\%} & - \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Confusion: 40/44 Rest correct, 41/44 Task correct. All 6 recordings (3 subjects $\times$ 2 conditions) classified correctly at recording level. \textbf{Caveat:} Only \num{3} subjects (\num{88} epochs); estimate has high variance. Smoothing (rolling mean over 3 epochs) exploits temporal adjacency, not strict per-epoch performance. LOSO \SI{73.7}{\%} is the reliable generalization estimate.
+
+\subsection{SHAP Feature Importance (Hold-Out Subjects)}
+\label{sec:shap}
+KernelSHAP on SVM-RBF (hold-out subjects, model trained on 33 training subjects). Top 20 features:
+
+\begin{enumerate}
+    \item \texttt{T6\_higuchi\_fd} (Higuchi fractal dimension, right temporal)
+    \item \texttt{T5\_gamma\_power} (gamma absolute power, left temporal)
+    \item \texttt{C3\_wavelet\_energy\_L4} (wavelet energy \SIrange{16}{32}{\hertz}, central)
+    \item \texttt{P3\_wavelet\_energy\_L3} (wavelet energy \SIrange{8}{16}{\hertz}, parietal)
+    \item \texttt{Fz\_theta\_power} (frontal midline theta)
+    \item \texttt{Fp2\_gamma\_power}, \texttt{Fp1\_gamma\_power} (frontal pole gamma)
+    \item \texttt{T6\_katz\_fd}, \texttt{T6\_petrosian\_fd} (complexity, right temporal)
+    \item \texttt{C4\_beta\_power}, \texttt{C3\_beta\_power} (central beta)
+    \item Connectivity features: none in top 50.
+\end{enumerate}
+
+\textbf{Channel distribution:} 45\% of top 20 from frontal/temporal channels (Fp1, Fp2, Fz, F3, F4, F7, F8, T3, T4, T5, T6) vs. 42\% of scalp. \textbf{Directionality:} High Higuchi FD at T6 $\rightarrow$ Task; high gamma at T5/Fp1/Fp2 $\rightarrow$ Task; high frontal theta $\rightarrow$ Task (consistent with workload literature \cite{chikhi2022eeg, katahira2018eeg}).
+
+\textbf{Critical caveat:} Gamma and frontal pole (Fp1/Fp2) features are muscle/blink-prone \cite{puce2017review}. Top features mix complexity (neural) and gamma (potentially artifactual).
+
+\subsection{Robustness Checks: Neural vs. Artifact Contributions}
+\label{sec:robustness}
+LOSO re-run with feature exclusions (SVM-RBF):
+
+\begin{table}[htbp]
+\caption{Robustness: LOSO Balanced Accuracy Under Feature Exclusions}
+\label{tab:robustness}
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Exclusion & Bal. Acc. & $\Delta$ vs. Full \\
+\midrule
+Full (all \num{1076} features) & 0.737 & -- \\
+Exclude Fp1/Fp2 channels (\num{112} feats) & 0.712 & -0.025 \\
+Exclude all gamma-band features (\num{95} feats) & 0.701 & -0.036 \\
+Exclude Fp1/Fp2 + gamma (\num{187} feats) & 0.678 & -0.059 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Performance degrades when artifact-prone features removed, confirming non-neural contributions. However, \SI{67.8}{\%} remains above chance (\SI{50}{\%}), indicating genuine neural signal persists.
+
+\subsection{Per-Subject Variability}
+Per-subject balanced accuracy (SVM-RBF, LOSO) ranges from \texttildelow\SI{0.35} to \texttildelow\SI{0.95} (SD \SI{0.166}). Subjects with high artifact burden (visualized via ICA component rejection count) tend toward lower accuracy. No correlation with good/bad counter label ($r = 0.08$, $p = 0.64$).
+
+\section{Discussion}
+
+\subsection{Why LOSO \texttildelow\SI{74}{\%} and Not Higher?}
+\begin{enumerate}
+    \item \textbf{High dimensionality, small $N$:} \num{1076} features, \texttildelow\num{1000} epochs, but only \num{36} independent subjects. Effective sample size for generalization is \num{36}, not \num{1076}.
+    \item \textbf{Heterogeneous spatial patterns:} No universal theta topography (Fig.~\ref{fig:topomap}); classifier must integrate weak, person-varying cues.
+    \item \textbf{Non-neural confounds:} Rest and Task are \textit{separate recordings} (Rest first, then Task). Time-on-task, fatigue, and arousal drift are confounded with condition \cite{berka2007eeg}.
+    \item \textbf{Limited montage:} \num{19} channels, no dedicated EOG/EMG. ICA with Fp1/Fp2 proxies is imperfect \cite{puce2017review}.
+    \item \textbf{Task difficulty variance:} 12/36 subjects are ``bad counters''; their Task condition may reflect failure rather than effort.
+\end{enumerate}
+
+\subsection{Why Hold-Out \texttildelow\SI{92}{\%}?}
+Small test set (\num{3} subjects, \num{88} epochs) $\rightarrow$ high variance. SVM-RBF used all features (including gamma/Fp1/Fp2) which boost separability on these specific subjects. Smoothing (w=3) exploits epoch autocorrelation. \textbf{Do not cite \SI{92}{\%} as generalization performance.}
+
+\subsection{Comparison with Literature}
+Our \SI{73.7}{\%} LOSO balanced accuracy (AUC \SI{0.820}) aligns with Sibisanu \textit{et al.} \cite{sibisanu2026high} (LOSO AUC \SIrange{0.66}{0.71} on same dataset with simpler features). Prior \SI{90--99}{\%} claims \cite{nath2020eeg, rambhia2023classification, aslam2025electroencephalograph} use subject-dependent evaluation and are not comparable. Alhothali \& Attar \cite{alhothali2026validation} (subject-level CV, RF \SI{92}{\%}) report same directional band effects (theta$\uparrow$, alpha$\downarrow$) but weaker CV.
+
+\subsection{Limitations}
+\label{sec:limitations}
+\begin{enumerate}
+    \item \textbf{Condition order confound:} Rest always precedes Task; fatigue/drift mimics workload effects.
+    \item \textbf{No dedicated artifact channels:} Fp1/Fp2 as EOG proxies; no EMG. ICA limited by \num{19} channels.
+    \item \textbf{Per-subject normalization:} Requires both conditions from new user; not deployable for single-condition inference.
+    \item \textbf{Hold-out size:} \num{3} subjects insufficient for reliable estimation.
+    \item \textbf{Hyperparameter tuning optimism:} Tuned on same \num{36} subjects evaluated by LOSO.
+    \item \textbf{Binary only:} Rest vs. Task; workload \textit{levels} not addressed.
+    \item \textbf{Demographics:} Young adults only; generalizability unknown.
+\end{enumerate}
+
+\section{Conclusion}
+We presented a leak-free EEG classification pipeline for Mental Arithmetic vs. Rest on the EEGMAT dataset. Under rigorous leave-one-subject-out evaluation, the best model (SVM-RBF) achieves \SI{73.7}{\%} balanced accuracy (AUC \SI{0.820}), with boosting ensembles (XGBoost, AdaBoost) statistically indistinguishable. A fixed hold-out test yields \SI{92.0}{\%} but is unreliable due to small sample size. SHAP reveals frontal/temporal complexity and gamma features as top discriminators, but robustness checks show \SI{5.9}{\%} accuracy drop when artifact-prone features are excluded, confirming mixed neural/non-neural origins. The result is consistent with the only prior LOSO study on this dataset and substantially lower than subject-dependent claims (\SI{90--99}{\%}), underscoring that evaluation design—not model cleverness—drives reported performance. Future work: within-session condition counterbalancing, higher-density EEG with dedicated artifact channels, and workload-level regression.
+
+\section*{Acknowledgment}
+This work was completed as part of the UG3 BTP 4th Evaluation (Group B28SSR04) at IIIT Sri City. Dataset courtesy of Zyma \textit{et al.} via PhysioNet. Computational resources: local workstation.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\begin{thebibliography}{00}
+\bibitem{zyma2019electroencephalograms}
+I. Zyma, S. Tukaev, I. Seleznov, K. Kiyono, A. Popov, M. Chernykh, and O. Shpenkov, ``Electroencephalograms during Mental Arithmetic Task Performance,'' \textit{Data}, vol. 4, no. 1, p. 14, 2019.
+
+\bibitem{nath2020eeg}
+D. Nath, A. Anubhav, D. Kalra, M. Singh, D. Sethia, and S. Indu, ``EEG-based Mental Workload Detection in a Mental Arithmetic Task using Machine Learning,'' \textit{Int. J. Adv. Sci. Technol.}, vol. 29, no. 5, pp. 13975--13984, 2020.
+
+\bibitem{sibisanu2026high}
+R. Sibisanu, M. Leba, and A. C. Ionica, ``High Accuracy Is Not Generalization: Evaluation Design in EEG Mental Arithmetic Classification,'' \textit{Entropy}, vol. 28, no. 11, p. 1275, 2026.
+
+\bibitem{sanjay2025detection}
+D. A. Sanjay and P. P. Sheethal, ``Detection of Mental Arithmetic Task Using EEG Signals,'' \textit{Int. J. Sci. Innov. Eng.}, vol. 2, no. 12, pp. 902--906, 2025.
+
+\bibitem{rambhia2023classification}
+J. Rambhia and R. Sutar, ``Classification of Mental Arithmetic States Using Single Electrode,'' in \textit{Proc. NEleX}, 2023, pp. 1--4.
+
+\bibitem{alhothali2026validation}
+A. S. Alhothali and E. T. Attar, ``Validation of EEG mental workload markers using integrated statistical and machine learning analyses,'' \textit{Appl. Neuropsychol. Adult}, pp. 1--13, 2026.
+
+\bibitem{berka2007eeg}
+C. Berka \textit{et al.}, ``EEG correlates of task engagement and mental workload in vigilance, learning, and memory tasks,'' \textit{Aviat. Space Environ. Med.}, vol. 78, no. 5 Suppl, pp. B231--B244, 2007.
+
+\bibitem{chikhi2022eeg}
+S. Chikhi, N. Matton, and S. Blanchet, ``EEG power spectral measures of cognitive workload: A meta-analysis,'' \textit{Psychophysiology}, vol. 59, no. 6, p. e14009, 2022.
+
+\bibitem{katahira2018eeg}
+K. Katahira \textit{et al.}, ``EEG Correlates of the Flow State: A Combination of Increased Frontal Theta and Moderate Frontocentral Alpha Rhythm in the Mental Arithmetic Task,'' \textit{Front. Psychol.}, vol. 9, p. 300, 2018.
+
+\bibitem{ishii2014frontal}
+R. Ishii \textit{et al.}, ``Frontal midline theta rhythm and gamma power changes during focused attention on mental calculation: an MEG beamformer analysis,'' \textit{Front. Hum. Neurosci.}, vol. 8, p. 406, 2014.
+
+\bibitem{dimitriadis2016causal}
+S. I. Dimitriadis, Y. Sun, N. V. Thakor, and A. Bezerianos, ``Causal Interactions between Frontal $\theta$ -- Parieto-Occipital $\alpha$2 Predict Performance on a Mental Arithmetic Task,'' \textit{Front. Hum. Neurosci.}, vol. 10, p. 454, 2016.
+
+\bibitem{pusica2025machine}
+M. Pušica \textit{et al.}, ``Machine learning performance in EEG-based mental workload classification across task types: a systematic review,'' \textit{Front. Neuroergonomics}, vol. 6, p. 1621309, 2025.
+
+\bibitem{aslam2025electroencephalograph}
+M. Aslam, ``Electroencephalograph (EEG) based classification of mental arithmetic using explainable machine learning,'' \textit{Biocybern. Biomed. Eng.}, vol. 45, no. 2, pp. 154--169, 2025.
+
+\bibitem{ajra2022mental}
+Z. Ajra \textit{et al.}, ``Mental arithmetic task classification with convolutional neural network based on spectral-temporal features from EEG,'' in \textit{Proc. EMBC}, 2022, pp. 1--4.
+
+\bibitem{gramfort2013meg}
+A. Gramfort \textit{et al.}, ``MEG and EEG data analysis with MNE-Python,'' \textit{Front. Neurosci.}, vol. 7, p. 267, 2013.
+
+\bibitem{jas2017autoreject}
+M. Jas \textit{et al.}, ``Autoreject: Automated artifact rejection for MEG and EEG data,'' \textit{NeuroImage}, vol. 159, pp. 361--368, 2017.
+
+\bibitem{makeig1997independent}
+S. Makeig, A. J. Bell, T.-P. Jung, and T. J. Sejnowski, ``Independent component analysis of electroencephalographic data,'' in \textit{Proc. NIPS}, vol. 8, 1997.
+
+\bibitem{hjorth1970eeg}
+B. Hjorth, ``EEG analysis based on time domain properties,'' \textit{EEG Clin. Neurophysiol.}, vol. 28, no. 3, pp. 306--310, 1970.
+
+\bibitem{puce2017review}
+A. Puce and M. S. Hämäläinen, ``A Review of Issues Related to Data Acquisition and Analysis in EEG/MEG Studies,'' \textit{Brain Sci.}, vol. 7, no. 6, p. 58, 2017.
+
+\bibitem{bigdely2015prep}
+N. Bigdely-Shamlo \textit{et al.}, ``The PREP pipeline: standardized preprocessing for large-scale EEG analysis,'' \textit{Front. Neuroinform.}, vol. 9, p. 116, 2015.
+
+\bibitem{lachaux1999measuring}
+J.-P. Lachaux \textit{et al.}, ``Measuring phase synchrony in brain signals,'' \textit{Hum. Brain Mapp.}, vol. 8, no. 4, pp. 194--208, 1999.
+
+\bibitem{lundberg2017unified}
+S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \textit{Proc. NeurIPS}, vol. 30, 2017.
+
+\bibitem{antropy}
+``antropy: Entropy measures for time series analysis,'' \url{https://github.com/raphaelvallat/antropy}.
+\end{thebibliography}
+
+\end{document}
